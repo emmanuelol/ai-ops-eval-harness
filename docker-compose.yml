@@ -1,19 +1,17 @@
-version: '3.8'
-
 services:
   test:
+    image: ai-ops-eval-harness:latest
     build:
       context: .
       dockerfile: Dockerfile
-    volumes:
-      - .:/app
     environment:
       - PYTHONPATH=/app/src
-    command: ["pytest", "tests/", "-v"]
+    command: ["tests/", "-v", "-o", "cache_dir=/tmp/.pytest_cache"]
 
   audit:
+    image: ai-ops-eval-harness:latest
     build:
       context: .
       dockerfile: Dockerfile
     entrypoint: ["bash"]
-    command: ["scripts/check_blacklist.sh"]
+    command: ["scripts/check_blacklist.sh", "."]
