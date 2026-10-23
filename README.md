@@ -13,24 +13,60 @@ SRE-hardened evaluation harness, deterministic QA scenario runner, LLM prompt/ou
 
 ## ⚡ 30-Second Quick Tour
 
-### CLI Evaluation & Auditing
+### Zero-Install Execution (`uvx`)
+Run directly from GitHub without cloning or setting up a virtual environment:
 ```bash
-# Execute evaluation harness and get instant structured report
-ai-ops-eval eval
+uvx --from git+https://github.com/emmanuelol/ai-ops-eval-harness ai-ops-eval eval --json
+```
 
-# Output clean JSON report for machine consumption
-ai-ops-eval eval --json
+### CLI Evaluation & Real Terminal Outputs
+```bash
+# 1. Execute evaluation harness and get instant structured report
+$ ai-ops-eval eval
+=== Evaluation Harness: cli_evaluation_suite ===
+Total Scenarios : 1
+Passed          : 1
+Failed          : 0
+  ✅ system_contract_eval (0.0000s)
 
-# Reconcile multi-channel ledgers with IEEE 754 precision tolerance
-ai-ops-eval reconcile \
+# 2. Output clean JSON report for machine consumption
+$ ai-ops-eval eval --json
+{
+  "harness": "cli_evaluation_suite",
+  "total_scenarios": 1,
+  "passed": 1,
+  "failed": 0,
+  "success_rate_pct": 100.0,
+  "duration_seconds": 0.0,
+  "results": [
+    {
+      "name": "system_contract_eval",
+      "passed": true,
+      "duration_seconds": 0.0,
+      "error": null
+    }
+  ]
+}
+
+# 3. Reconcile multi-channel ledgers with IEEE 754 precision tolerance
+$ ai-ops-eval reconcile \
   --primary-gross 12500 \
   --secondary-gross 3200 \
   --secondary-net 2624 \
   --secondary-tax 416 \
   --secondary-fee 160
+=== Reconciliation Succeeded ===
+Consolidated Gross: 15700.00
+Primary Gross     : 12500.00
+Secondary Gross   : 3200.00
+Secondary Net     : 2624.00
+Gross Variance    : 0.0000
+Net Variance      : 0.0000
+Hidden Variance   : 0.0000
 
-# Audit data ingestion coercion drops against tolerance threshold
-ai-ops-eval starvation-check --initial 1000 --final 995 --tolerance-pct 1.0
+# 4. Audit data ingestion coercion drops against tolerance threshold
+$ ai-ops-eval starvation-check --initial 1000 --final 995 --tolerance-pct 1.0
+STARVATION CHECK PASSED: initial=1000, final=995
 ```
 
 ---
@@ -157,6 +193,31 @@ harness.register(
 
 report = harness.run_all()
 print(f"Passed: {report['passed']}/{report['total_scenarios']}")
+```
+
+### 4. Direct Pytest Integration
+Embed contract evaluation assertions directly into your existing `pytest` test suites:
+
+```python
+import pytest
+from ai_ops_eval_harness import (
+    assert_prompt_context_integrity,
+    assert_decoupled_json_contract,
+    assert_ultra_concise_disclosure,
+    BlastShield,
+)
+
+def test_production_llm_pipeline():
+    prompt = "Context marker: [REF-2026-X]. Summary instructions."
+    assert_prompt_context_integrity(prompt, required_markers=["[REF-2026-X]"])
+
+    with BlastShield(simulate_success=True) as shield:
+        response = {
+            "status": "success",
+            "text": "• Operational status verified\n• Latency 42ms\n• Zero drops",
+        }
+        assert_decoupled_json_contract(response, required_status="success")
+        assert_ultra_concise_disclosure(response["text"], max_bullets=3)
 ```
 
 ---
