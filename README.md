@@ -1,14 +1,43 @@
 # ai-ops-eval-harness 🧪
 
 [![CI Pipeline](https://github.com/emmanuelol/ai-ops-eval-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/emmanuelol/ai-ops-eval-harness/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/emmanuelol/ai-ops-eval-harness?color=blue)](https://github.com/emmanuelol/ai-ops-eval-harness/releases)
+[![Python: 3.11 | 3.12 | 3.13](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/downloads/)
+[![Package Manager: uv](https://img.shields.io/badge/managed_by-uv-orange.svg)](https://github.com/astral-sh/uv)
+[![Typing: PEP 561](https://img.shields.io/badge/typing-PEP%20561-green.svg)](https://peps.python.org/pep-0561/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python: 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 SRE-hardened evaluation harness, deterministic QA scenario runner, LLM prompt/output contract assertions, and statistical circuit breakers for automated financial and operational pipelines.
 
 ---
 
+## ⚡ 30-Second Quick Tour
+
+### CLI Evaluation & Auditing
+```bash
+# Execute evaluation harness and get instant structured report
+ai-ops-eval eval
+
+# Output clean JSON report for machine consumption
+ai-ops-eval eval --json
+
+# Reconcile multi-channel ledgers with IEEE 754 precision tolerance
+ai-ops-eval reconcile \
+  --primary-gross 12500 \
+  --secondary-gross 3200 \
+  --secondary-net 2624 \
+  --secondary-tax 416 \
+  --secondary-fee 160
+
+# Audit data ingestion coercion drops against tolerance threshold
+ai-ops-eval starvation-check --initial 1000 --final 995 --tolerance-pct 1.0
+```
+
+---
+
 ## 🏛️ Architecture & Evaluation Flow
+
+For full architectural deep-dive and subsystem specifications, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ```mermaid
 flowchart TD
@@ -18,20 +47,20 @@ flowchart TD
     end
 
     subgraph AUDITING["Statistical Circuit Breakers"]
-        C --> D["reconcile_channel_ledgers (IEEE 754 float tolerance)"]
-        D --> E["validate_financial_bounds (DoW Z-Score & Drop Breaker)"]
-        E --> F["validate_cash_ratio_variance & validate_promo_threshold"]
+        C --> D["reconcile_channel_ledgers\n(IEEE 754 float tolerance)"]
+        D --> E["validate_financial_bounds\n(DoW Z-Score & Drop Breaker)"]
+        E --> F["validate_cash_ratio_variance &\nvalidate_promo_threshold"]
     end
 
     subgraph ORCHESTRATION["LLM Contracts & Telemetry"]
         F --> G["assert_prompt_context_integrity"]
         G --> H["@track_llm_telemetry (Backoff on 429)"]
-        H --> I["LLM Inference / Generation"]
-        I --> J["assert_decoupled_json_contract & assert_ultra_concise_disclosure"]
+        H --> I["BlastShield (Outbound Sandbox)"]
+        I --> J["assert_decoupled_json_contract &\nassert_ultra_concise_disclosure"]
     end
 
     subgraph STORAGE["Safe Atomic Cache"]
-        F --> K["safe_atomic_parquet_export (PyArrow-safe schema swap)"]
+        F --> K["safe_atomic_parquet_export\n(PyArrow-safe schema swap)"]
     end
 ```
 
@@ -52,14 +81,31 @@ flowchart TD
 
 ---
 
-## 🚀 Quickstart
+## 📂 Runnable Examples
+
+Explore ready-to-run end-to-end scenarios under [`examples/`](examples/):
+
+* **[Example 01: LLM Contract Evaluation](examples/01_llm_contract_eval.py)**: Prompt context integrity, `@track_llm_telemetry`, `BlastShield` interception, and progressive disclosure UX.
+* **[Example 02: Financial Circuit Breakers](examples/02_financial_circuit_breaker.py)**: Starvation checks, multi-channel reconciliation, DoW Z-score anomaly tripping, and atomic Parquet cache export.
+* **[Example 03: Scenario Harness Runner](examples/03_scenario_harness_runner.py)**: Declarative scenario suites, assertion chaining, and structured JSON reporting.
+
+Run all examples locally:
+```bash
+make examples
+```
+
+---
+
+## 🚀 Library Quickstart
 
 ### 1. Installation
 ```bash
 pip install ai-ops-eval-harness
+# or using uv
+uv add ai-ops-eval-harness
 ```
 
-### 2. Reconciliation & Starvation Check
+### 2. Financial Reconciliation & Starvation Guard
 ```python
 from ai_ops_eval_harness import (
     assert_no_coercion_starvation,
@@ -68,22 +114,22 @@ from ai_ops_eval_harness import (
 )
 
 # Guard against silent coercion drops
-assert_no_coercion_starvation(initial_count=100, final_count=100)
+assert_no_coercion_starvation(initial_count=1000, final_count=995, tolerance_pct=1.0)
 
-# Reconcile multi-channel ledgers with float precision tolerance
+# Reconcile multi-channel ledgers with IEEE 754 precision tolerance
 reconciliation = reconcile_channel_ledgers(
-    primary_gross=12000.50,
-    secondary_gross=3500.00,
-    secondary_net=2800.00,
-    secondary_tax=400.00,
-    secondary_fee=300.00,
-    platform_estimate=2800.00,
+    primary_gross=12500.00,
+    secondary_gross=3200.00,
+    secondary_net=2624.00,
+    secondary_tax=416.00,
+    secondary_fee=160.00,
+    platform_estimate=2624.00,
     abs_tol=0.01,
 )
-print(f"Consolidated Gross: ${reconciliation['consolidated_gross']}")
+print(f"Consolidated Gross: ${reconciliation['consolidated_gross']:.2f}")
 ```
 
-### 3. Declarative Scenario Runner
+### 3. Declarative Scenario Harness & Blast Shield
 ```python
 from ai_ops_eval_harness import (
     ScenarioHarness,
@@ -96,8 +142,8 @@ harness = ScenarioHarness(name="daily_eval")
 
 def sample_pipeline():
     with BlastShield(simulate_success=True) as shield:
-        # Simulate dispatching report
-        shield.record_dispatch("+1234567890", {"message": "All systems operational"})
+        # Simulate dispatching report without hitting production network
+        shield.record_dispatch("+1-555-0100", {"message": "All systems operational"})
         return {"status": "success", "text": "Daily summary"}
 
 harness.register(
@@ -117,15 +163,21 @@ print(f"Passed: {report['passed']}/{report['total_scenarios']}")
 
 ## 🧪 Verification & Security Audit
 
-This repository enforces 100% containerized execution and Trivy vulnerability auditing:
+This repository enforces strict clean-room leak scanning, property-based testing, and containerized Trivy vulnerability auditing:
 
 ```bash
-# Build Docker image
-make build
-
-# Run unit and integration tests inside container
+# Run unit, property and script tests with coverage
 make test
 
-# Scan image for vulnerabilities and prohibited secrets
+# Run linter and type-checker
+make lint
+make typecheck
+
+# Scan repository for sensitive IP or credential leaks
+make check-blacklist
+
+# Build Docker image & execute full containerized security audit
 make audit
 ```
+
+For security policies and threat modeling details, see [SECURITY.md](SECURITY.md).
