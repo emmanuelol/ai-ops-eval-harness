@@ -11,23 +11,93 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Build, Test & Security Audit
+  static-security-scan:
+    name: Clean-Room Static Leak Scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@v4
 
-      - name: Static Clean-Room Leak Scan
+      - name: Run Clean-Room Static Scan
         env:
           BLACKLIST_REGEX: ${{ secrets.BLACKLIST_REGEX }}
         run: bash ./scripts/check_blacklist.sh .
 
+  lint-and-typecheck:
+    name: Lint & Type Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Dependencies
+        run: uv sync --extra dev
+
+      - name: Run Ruff Linter
+        run: uv run ruff check . --ignore=E501,W293,I001,F401,B904
+
+      - name: Run Mypy Type Checker
+        run: uv run mypy src/ai_ops_eval_harness --ignore-missing-imports
+
+  test-matrix:
+    name: Pytest Suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Dependencies
+        run: uv sync --extra dev
+
+      - name: Run Unit & Property Tests with Coverage
+        run: |
+          uv run --extra dev pytest tests/ -v --cov=ai_ops_eval_harness --cov-report=xml --cov-fail-under=85
+
+      - name: Run Runnable Examples Verification
+        run: |
+          uv run python examples/01_llm_contract_eval.py
+          uv run python examples/02_financial_circuit_breaker.py
+          uv run python examples/03_scenario_harness_runner.py
+
+  container-audit:
+    name: Docker Image Build & Security Dogfooding
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build Container Image
-        run: make build
+        run: docker compose build
 
-      - name: Run Integration Test Suite
-        run: make test
+      - name: Execute Containerized Tests
+        run: docker compose run --rm test
 
-      - name: Security & Vulnerability Audit
-        run: bash ./scripts/audit_image.sh
+      - name: Run Trivy Vulnerability & Leak Audit
+        run: bash ./scripts/audit_image.sh ai-ops-eval-harness:latest
