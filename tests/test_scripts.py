@@ -43,6 +43,11 @@ class TestShellScripts:
         assert script.exists()
         assert os.access(script, os.X_OK)
 
+    def test_check_blacklist_script_executable(self) -> None:
+        script = SCRIPTS_DIR / "check_blacklist.sh"
+        assert script.exists()
+        assert os.access(script, os.X_OK)
+
     def test_audit_image_syntax_check(self) -> None:
         res = subprocess.run(
             ["bash", "-n", str(SCRIPTS_DIR / "audit_image.sh")],
