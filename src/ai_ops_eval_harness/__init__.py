@@ -30,9 +30,11 @@ from ai_ops_eval_harness.scenarios import (
     ScenarioHarness,
 )
 from ai_ops_eval_harness.telemetry import track_llm_telemetry
+from ai_ops_eval_harness.cli import main
 
 __all__ = [
     "__version__",
+    "main",
     "DataStarvationError",
     "FinancialAnomalyError",
     "EvalAssertionError",
